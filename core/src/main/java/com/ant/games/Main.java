@@ -14,17 +14,20 @@ import java.util.List;
 import java.util.Random;
 
 public class Main extends ApplicationAdapter {
+
     private SpriteBatch batch;
+    private ShapeRenderer shapeRenderer;
+
+    // TEXTURES
+    private Texture bottomRackServer;
     private Texture background;
     private Texture topRackServer;
-    private Rectangle topRackServerHitBox;
-
-    private Texture bottomRackServer;
-    private Rectangle bottomRackServerHitBox;
-    private Rectangle birdHitBox;
     private Texture[] birds;
+
+    // TEXTES
     private BitmapFont font;
     private int score = 0;
+
     private int flapState = 0;
     private float birdY = 0;
     private float velocity = 0;
@@ -37,12 +40,19 @@ public class Main extends ApplicationAdapter {
     private boolean tubeIsRed = false;
     private Random randomGenerator;
 
+    // CROTTE
     private List<Crotte> crottes;
     private final String[] commandes = {"cd", "ls", "ip a", "sudo apt update", "sudo apt upgrade"};
+
+    // HITBOXES
+    private Rectangle topRackServerHitBox;
+    private Rectangle bottomRackServerHitBox;
+    private Rectangle birdHitBox;
 
     @Override
     public void create() {
         batch = new SpriteBatch();
+        shapeRenderer = new ShapeRenderer();
         background = new Texture("background.png");
         topRackServer = new Texture("rackserver_up.png");
         bottomRackServer = new Texture("rackserver_down.png");
@@ -58,20 +68,16 @@ public class Main extends ApplicationAdapter {
         tubeX = Gdx.graphics.getWidth();
         maximumOffSet = ((float) Gdx.graphics.getHeight() / 2 - gap / 2) - 100;
         randomGenerator = new Random();
+        crottes = new ArrayList<>();
+
+        // HITBOXES
         topRackServerHitBox = new Rectangle();
         bottomRackServerHitBox = new Rectangle();
         birdHitBox = new Rectangle();
-
-        crottes = new ArrayList<>();
-
-        float width = birds[1].getWidth();
-        float height = birds[1].getHeight();
-
     }
 
     @Override
     public void render() {
-
         float screenWidth = Gdx.graphics.getWidth();
         float screenHeight = Gdx.graphics.getHeight();
 
@@ -80,6 +86,7 @@ public class Main extends ApplicationAdapter {
                 velocity = -30;
                 crottes.add(new Crotte(screenWidth / 2 - 20, birdY, commandes[randomGenerator.nextInt(commandes.length)]));
             }
+
             velocity += 2;
             birdY -= velocity;
             tubeX -= tubeVelocity;
@@ -91,12 +98,42 @@ public class Main extends ApplicationAdapter {
                 score += tubeIsRed ? 2 : 1;
             }
 
-            birdHitBox.set(screenWidth / 2 - (float) birds[flapState].getWidth() / 2, birdY, birds[flapState].getWidth(), birds[flapState].getHeight());
-            topRackServerHitBox.set(tubeX, (screenHeight / 2 + gap / 2) + tubeOffSet, topRackServer.getWidth(), screenHeight - (screenHeight / 2 + gap / 2) - tubeOffSet);
-            bottomRackServerHitBox.set(tubeX, 0, bottomRackServer.getWidth(), (screenHeight / 2 - gap / 2) + tubeOffSet);
-
-            if (birdY <= 0 || birdY >= screenHeight ||  birdHitBox.overlaps(topRackServerHitBox) || birdHitBox.overlaps(bottomRackServerHitBox)) {
+            // GAME OVER: si l'oiseau sort de l'écran (haut ou bas)
+            if (birdY <= 0 || birdY + birds[flapState].getHeight() >= screenHeight) {
                 gamestate = 2;
+            }
+
+            // HITBOXES
+            float serverWidth = topRackServer.getWidth() * 0.5f;  // Réduction de 50 % de la largeur
+            float serverHeight = screenHeight / 2 - gap / 2 + 50; // Hauteur conservée
+
+            // Top Server Hitbox
+            topRackServerHitBox.set(
+                tubeX + (topRackServer.getWidth() - serverWidth) / 2, // Centrer horizontalement
+                (screenHeight / 2 + gap / 2) + tubeOffSet,
+                serverWidth,
+                serverHeight
+            );
+
+            // Bottom Server Hitbox
+            bottomRackServerHitBox.set(
+                tubeX + (bottomRackServer.getWidth() - serverWidth) / 2, // Centrer horizontalement
+                0,
+                serverWidth,
+                (screenHeight / 2 - gap / 2) + tubeOffSet // Hauteur conservée
+            );
+
+            // Oiseau Hitbox
+            birdHitBox.set(
+                screenWidth / 2 - (float) birds[flapState].getWidth() / 2,
+                birdY,
+                birds[flapState].getWidth(),
+                birds[flapState].getHeight()
+            );
+
+            // Vérification des collisions
+            if (birdHitBox.overlaps(topRackServerHitBox) || birdHitBox.overlaps(bottomRackServerHitBox)) {
+                gamestate = 2; // Game Over si l'oiseau touche un serveur
             }
         } else if (gamestate == 0 && Gdx.input.justTouched()) {
             gamestate = 1;
@@ -105,13 +142,14 @@ public class Main extends ApplicationAdapter {
             resetGame();
         }
 
+        // AFFICHAGE
         batch.begin();
         batch.draw(background, 0, 0, screenWidth, screenHeight);
         if (tubeIsRed) batch.setColor(1, 0, 0, 0.8f);
         batch.draw(bottomRackServer, tubeX, 0, bottomRackServer.getWidth(), (screenHeight / 2 - gap / 2) + tubeOffSet);
         batch.draw(topRackServer, tubeX, (screenHeight / 2 + gap / 2) + tubeOffSet, topRackServer.getWidth(), screenHeight - (screenHeight / 2 + gap / 2) - tubeOffSet);
         batch.setColor(1, 1, 1, 1);
-        batch.draw(birds[flapState], screenWidth / 2 - (float) birds[flapState].getWidth() / 2, birdY);
+        batch.draw(birds[flapState], screenWidth / 2 - birds[flapState].getWidth() / 2, birdY);
 
         font.setColor(Color.WHITE);
         font.draw(batch, "Score: " + score, 100, screenHeight - 50);
@@ -125,13 +163,38 @@ public class Main extends ApplicationAdapter {
 
         if (gamestate == 2) {
             font.getData().setScale(6);
-            font.setColor(Color.WHITE);
             font.draw(batch, "GAME OVER!", screenWidth / 2 - 200, screenHeight / 2 + 100);
             font.getData().setScale(4);
             font.draw(batch, "SCORE " + score, screenWidth / 2 - 100, screenHeight / 2);
             font.draw(batch, "Tap to Restart", screenWidth / 2 - 150, screenHeight / 2 - 100);
         }
+
         batch.end();
+
+        // Dessiner les hitboxes
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+        shapeRenderer.setColor(Color.RED);
+        shapeRenderer.rect(
+            topRackServerHitBox.x,
+            topRackServerHitBox.y,
+            topRackServerHitBox.width,
+            topRackServerHitBox.height
+        );
+        shapeRenderer.rect(
+            bottomRackServerHitBox.x,
+            bottomRackServerHitBox.y,
+            bottomRackServerHitBox.width,
+            bottomRackServerHitBox.height
+        );
+
+        shapeRenderer.setColor(Color.BLUE);
+        shapeRenderer.rect(
+            birdHitBox.x,
+            birdHitBox.y,
+            birdHitBox.width,
+            birdHitBox.height
+        );
+        shapeRenderer.end();
     }
 
     private void resetGame() {
