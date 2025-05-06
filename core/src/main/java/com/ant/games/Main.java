@@ -392,7 +392,7 @@ public class Main extends ApplicationAdapter implements TextInputListener {
 
         // Titre du jeu en haut
         font.getData().setScale(6);
-        font.draw(batch, "LINUX BIRD", screenWidth / 2 - 200, screenHeight - 100);
+        font.draw(batch, "FLAPNUX", screenWidth / 2 - 200, screenHeight - 100);
 
         batch.end();
 
